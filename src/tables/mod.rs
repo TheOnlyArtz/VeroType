@@ -4,14 +4,13 @@ use std::{
 };
 
 use head::Head;
+use name::Name;
 use thiserror::Error;
 
-use crate::{
-    VeroTypeError,
-    buffer::{VeroBufReader, VeroBufReaderError},
-};
+use crate::{VeroTypeError, buffer::VeroBufReader};
 
 pub mod head;
+pub mod name;
 
 /// An enum for the required tables
 /// tables where every TrueType formatted font must include in it's
@@ -114,12 +113,12 @@ impl OffsetTable {
 pub struct Tables {
     /// The offset table, which provides the starting offsets of other tables.
     pub offset: OffsetTable,
-    
+
     /// The headers of the tables
     pub headers: TablesHeaders,
-    
+
     /// The head table
-    pub head_table: Head
+    pub head_table: Head,
 }
 
 impl Tables {
@@ -181,7 +180,9 @@ impl Tables {
         let offset_table = OffsetTable::from_reader(reader)?;
         let headers = TablesHeaders::from_reader(reader, offset_table.num_tables())?;
         let head_table = Head::from_reader(reader, headers.get(RequiredTables::Head).unwrap())?;
-
+        let name_table = Name::from_reader(reader, headers.get(RequiredTables::Name).unwrap())?;
+        
+        println!("{:?}", name_table);
         Ok(Self {
             offset: offset_table,
             head_table,
@@ -201,6 +202,42 @@ pub struct TablesHeaders {
 }
 
 impl TablesHeaders {
+    /// Constructs a `TablesHeaders` instance by reading table headers from the provided `VeroBufReader`.
+    ///
+    /// This method reads the specified number of table headers from the reader. It assumes that the
+    /// reader's current position is at the beginning of the table header entries, immediately following
+    /// the Offset Table in a TrueType font file. Each table header is expected to be 16 bytes long.
+    ///
+    /// The method parses each 16-byte chunk into `TableMetadata` and stores it in a `BTreeMap`,
+    /// keyed by the corresponding `RequiredTables` enum variant. Tables with tags that do not match
+    /// any variant of `RequiredTables` are currently ignored (see TODO in the code).
+    ///
+    /// # Arguments
+    ///
+    /// * `reader`: A mutable reference to a `VeroBufReader` that provides access to the font file data.
+    /// * `num_tables`: The total number of tables present in the font file, as indicated in the Offset Table.
+    ///
+    /// # Errors
+    ///
+    /// This method can return a `VeroTypeError` in the following cases:
+    ///
+    /// * **Reading Error:** If an error occurs while reading the table header data from the `reader`
+    ///   (wrapped as `VeroTypeError::IoError`). This could happen if the end of the file is reached
+    ///   before the expected number of bytes are read.
+    /// * **`TableMetadata::from_buffer` Error:** If an error occurs while parsing a 16-byte chunk
+    ///   into a `TableMetadata` instance. This could indicate an issue with the format of the table
+    ///   header data.
+    /// * **`RequiredTables::try_from` Error:** Although the current implementation doesn't explicitly
+    ///   propagate this as an error, the `try_from` conversion from the 4-byte tag to `RequiredTables`
+    ///   might fail if the tag is not recognized. In the current code, such tables are skipped.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing:
+    ///
+    /// * `Ok(Self)`: A new `TablesHeaders` instance containing a `BTreeMap` of `TableMetadata`,
+    ///   keyed by `RequiredTables`.
+    /// * `Err(VeroTypeError)`: An error that occurred during the process.
     pub fn from_reader<B: Read + Seek>(
         reader: &mut VeroBufReader<B>,
         num_tables: u16,
@@ -235,6 +272,22 @@ impl TablesHeaders {
         Ok(Self { inner: headers })
     }
 
+    /// Retrieves the `TableMetadata` for a specific required table.
+    ///
+    /// This method takes a `RequiredTables` enum variant as input and returns an `Option`
+    /// containing a reference to the `TableMetadata` associated with that table, if it exists
+    /// in the parsed headers.
+    ///
+    /// # Arguments
+    ///
+    /// * `k`: The `RequiredTables` variant representing the table for which to retrieve metadata.
+    ///
+    /// # Returns
+    ///
+    /// An `Option<&TableMetadata>`:
+    ///
+    /// * `Some(&TableMetadata)`: If metadata for the specified table is found.
+    /// * `None`: If no metadata is found for the specified table.
     pub fn get(&self, k: RequiredTables) -> Option<&TableMetadata> {
         self.inner.get(&k)
     }
