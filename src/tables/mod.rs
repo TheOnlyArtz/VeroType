@@ -1,14 +1,17 @@
 use std::{
-    collections::{btree_map::IntoIter, BTreeMap},
+    collections::{BTreeMap, btree_map::IntoIter},
     io::{Read, Seek},
 };
 
+use head::Head;
 use thiserror::Error;
 
 use crate::{
     VeroTypeError,
     buffer::{VeroBufReader, VeroBufReaderError},
 };
+
+pub mod head;
 
 /// An enum for the required tables
 /// tables where every TrueType formatted font must include in it's
@@ -111,7 +114,12 @@ impl OffsetTable {
 pub struct Tables {
     /// The offset table, which provides the starting offsets of other tables.
     pub offset: OffsetTable,
+    
+    /// The headers of the tables
     pub headers: TablesHeaders,
+    
+    /// The head table
+    pub head_table: Head
 }
 
 impl Tables {
@@ -172,8 +180,11 @@ impl Tables {
     ) -> Result<Self, VeroTypeError> {
         let offset_table = OffsetTable::from_reader(reader)?;
         let headers = TablesHeaders::from_reader(reader, offset_table.num_tables())?;
+        let head_table = Head::from_reader(reader, headers.get(RequiredTables::Head).unwrap())?;
+
         Ok(Self {
             offset: offset_table,
+            head_table,
             headers,
         })
     }
@@ -222,6 +233,10 @@ impl TablesHeaders {
         }
 
         Ok(Self { inner: headers })
+    }
+
+    pub fn get(&self, k: RequiredTables) -> Option<&TableMetadata> {
+        self.inner.get(&k)
     }
 }
 
