@@ -31,6 +31,7 @@ pub enum VeroBufReaderError {
 
 /// A Struct which encapsulates and provides a robust API
 /// for interacting with a buffer
+#[derive(Debug)]
 pub struct VeroBufReader<B: Read + Seek> {
     inner: BufReader<B>,
 }
@@ -101,6 +102,51 @@ where
         self.inner
             .seek(std::io::SeekFrom::Current(n))
             .map_err(|ctx| VeroBufReaderError::FailedToSeek(ctx))?;
+
+        Ok(())
+    }
+
+    /// Reads an exact number of bytes from the underlying buffer into the provided buffer.
+    ///
+    /// This method will block until `buffer.len()` bytes have been read.
+    /// If the underlying reader reaches the end of the file before enough bytes
+    /// have been read, it will return an error.
+    ///
+    /// # Errors
+    ///
+    /// This method can return a `VeroBufReaderError::ReadError` if an error
+    /// occurs while reading from the underlying buffer, including reaching
+    /// the end of the input before filling the buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::Cursor;
+    /// use vero_buf_reader::VeroBufReader;
+    ///
+    /// let data = vec![10, 20, 30, 40, 50];
+    /// let cursor = Cursor::new(data);
+    /// let mut reader = VeroBufReader::from_buffer(cursor);
+    ///
+    /// let mut buffer = [0u8; 3];
+    /// let result = reader.read_exact(&mut buffer);
+    ///
+    /// assert!(result.is_ok());
+    /// assert_eq!(buffer, [10, 20, 30]);
+    ///
+    /// let mut another_buffer = [0u8; 2];
+    /// let result = reader.read_exact(&mut another_buffer);
+    ///
+    /// assert!(result.is_ok());
+    /// assert_eq!(another_buffer, [40, 50]);
+    ///
+    /// let mut end_buffer = [0u8; 1];
+    /// let result = reader.read_exact(&mut end_buffer);
+    ///
+    /// assert!(result.is_err()); // Reached end of buffer
+    /// ```
+    pub fn read_exact(&mut self, buffer: &mut [u8]) -> Result<(), VeroBufReaderError> {
+        self.inner.read_exact(buffer)?;
 
         Ok(())
     }
