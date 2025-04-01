@@ -1,3 +1,5 @@
+use std::array::TryFromSliceError;
+
 use buffer::VeroBufReaderError;
 use tables::TableEncodingError;
 use thiserror::Error;
@@ -11,5 +13,8 @@ pub enum VeroTypeError {
     TableEncodingError(#[from] TableEncodingError),
 
     #[error(transparent)]
-    VeroBufReaderError(#[from] VeroBufReaderError)
+    VeroBufReaderError(#[from] VeroBufReaderError),
+    
+    #[error(transparent)]
+    FailedToReadEnoughBytes(#[from] TryFromSliceError)
 }
