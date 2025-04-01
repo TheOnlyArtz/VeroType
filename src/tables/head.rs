@@ -7,73 +7,85 @@ use super::TableMetadata;
 /// Represents the flags field of the 'head' table in a TrueType font file.
 /// Each field corresponds to a specific bit in the 16-bit flags value.
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct HeadFlags {
-    /// Bit 0: The Y value of 0 specifies the baseline. If set, a Y coordinate
-    /// of 0 corresponds to the font's baseline.
-    pub y_value_zero_is_baseline: u8,
-    /// Bit 1: x position of left most black bit is LSB. If set, the x coordinate
-    /// of the leftmost black bit of a glyph corresponds to the least significant bit
-    /// in coordinate values.
-    pub x_pos_leftmost_black_bit_lsb: u8,
-    /// Bit 2: Scaled point size and actual point size will differ. If set, indicates
-    /// that the glyphs in the font are designed such that their scaled point size
-    /// might differ from the actual point size (e.g., for hinting purposes).
-    pub scaled_point_size_differs: u8,
-    /// Bit 3: Use integer scaling instead of fractional. If set, the font scaler
-    /// should use integer scaling rather than fractional scaling for glyph rendering.
-    pub use_integer_scaling: u8,
-    /// Bit 4: (Used by the Microsoft implementation of the TrueType scaler). This
-    /// bit is specific to Microsoft's TrueType scaler implementation.
-    pub microsoft_scaler_flag: u8,
-    /// Bit 5: This bit should be set in fonts that are intended to be laid out
-    /// vertically, and in which the glyphs have been drawn such that an x-coordinate
-    /// of 0 corresponds to the desired vertical baseline.
-    pub vertical_layout: u8,
-    /// Bit 6: This bit must be set to zero. This bit is reserved and should always be 0.
-    pub must_be_zero: u8,
-    /// Bit 7: This bit should be set if the font requires layout for correct
-    /// linguistic rendering (e.g., Arabic fonts). Indicates the need for complex
-    /// text layout operations.
-    pub requires_linguistic_layout: u8,
-    /// Bit 8: This bit should be set for an AAT font which has one or more
-    /// metamorphosis effects designated as happening by default. Applicable to
-    /// Apple Advanced Typography (AAT) fonts.
-    pub aat_default_metamorphosis: u8,
-    /// Bit 9: This bit should be set if the font contains any strong right-to-left
-    /// glyphs. Indicates the presence of glyphs that are inherently right-to-left.
-    pub strong_rtl_glyphs: u8,
-    /// Bit 10: This bit should be set if the font contains Indic-style rearrangement
-    /// effects. Indicates the need for specific glyph rearrangement rules for Indic scripts.
-    pub indic_rearrangement: u8,
-    /// Bits 11-13: Defined by Adobe. These bits are reserved for Adobe's use and definition.
-    pub adobe_defined: u8,
-    /// Bit 14: This bit should be set if the glyphs in the font are simply generic
-    /// symbols for code point ranges, such as for a last resort font. Indicates
-    /// that the glyphs are placeholders or generic representations.
-    pub generic_symbol_font: u8,
-    /// Bit 15: Reserved (implied by the 16-bit nature of the flags) and should be 0.
-    pub reserved: u8,
+    bits: u16,
 }
 
 impl HeadFlags {
+    /// Constructs a `HeadFlags` instance from a raw `u16` value.
     pub fn from_bits(bits: u16) -> Self {
-        HeadFlags {
-            y_value_zero_is_baseline: (bits & 0b0000_0000_0000_0001) as u8,
-            x_pos_leftmost_black_bit_lsb: ((bits & 0b0000_0000_0000_0010) >> 1) as u8,
-            scaled_point_size_differs: ((bits & 0b0000_0000_0000_0100) >> 2) as u8,
-            use_integer_scaling: ((bits & 0b0000_0000_0000_1000) >> 3) as u8,
-            microsoft_scaler_flag: ((bits & 0b0000_0000_0001_0000) >> 4) as u8,
-            vertical_layout: ((bits & 0b0000_0000_0010_0000) >> 5) as u8,
-            must_be_zero: ((bits & 0b0000_0000_0100_0000) >> 6) as u8,
-            requires_linguistic_layout: ((bits & 0b0000_0000_1000_0000) >> 7) as u8,
-            aat_default_metamorphosis: ((bits & 0b0000_0001_0000_0000) >> 8) as u8,
-            strong_rtl_glyphs: ((bits & 0b0000_0010_0000_0000) >> 9) as u8,
-            indic_rearrangement: ((bits & 0b0000_0100_0000_0000) >> 10) as u8,
-            adobe_defined: ((bits & 0b0011_1000_0000_0000) >> 11) as u8,
-            generic_symbol_font: ((bits & 0b0100_0000_0000_0000) >> 14) as u8,
-            reserved: 0, // Bit 15 is reserved and should be 0
-        }
+        HeadFlags { bits }
+    }
+
+    /// Checks if the Y value of 0 specifies the baseline (bit 0).
+    pub fn y_value_zero_is_baseline(&self) -> bool {
+        (self.bits & 0b0000_0000_0000_0001) != 0
+    }
+
+    /// Checks if the x position of the leftmost black bit is the LSB (bit 1).
+    pub fn x_pos_leftmost_black_bit_lsb(&self) -> bool {
+        (self.bits & 0b0000_0000_0000_0010) != 0
+    }
+
+    /// Checks if the scaled point size and actual point size will differ (bit 2).
+    pub fn scaled_point_size_differs(&self) -> bool {
+        (self.bits & 0b0000_0000_0000_0100) != 0
+    }
+
+    /// Checks if integer scaling should be used instead of fractional (bit 3).
+    pub fn use_integer_scaling(&self) -> bool {
+        (self.bits & 0b0000_0000_0000_1000) != 0
+    }
+
+    /// Checks the Microsoft implementation of the TrueType scaler flag (bit 4).
+    pub fn microsoft_scaler_flag(&self) -> bool {
+        (self.bits & 0b0000_0000_0001_0000) != 0
+    }
+
+    /// Checks if the font is intended for vertical layout (bit 5).
+    pub fn vertical_layout(&self) -> bool {
+        (self.bits & 0b0000_0000_0010_0000) != 0
+    }
+
+    /// Checks if bit 6 (must be zero) is set.
+    pub fn must_be_zero(&self) -> bool {
+        (self.bits & 0b0000_0000_0100_0000) != 0
+    }
+
+    /// Checks if the font requires layout for correct linguistic rendering (bit 7).
+    pub fn requires_linguistic_layout(&self) -> bool {
+        (self.bits & 0b0000_0000_1000_0000) != 0
+    }
+
+    /// Checks if it's an AAT font with default metamorphosis effects (bit 8).
+    pub fn aat_default_metamorphosis(&self) -> bool {
+        (self.bits & 0b0000_0001_0000_0000) != 0
+    }
+
+    /// Checks if the font contains any strong right-to-left glyphs (bit 9).
+    pub fn strong_rtl_glyphs(&self) -> bool {
+        (self.bits & 0b0000_0010_0000_0000) != 0
+    }
+
+    /// Checks if the font contains Indic-style rearrangement effects (bit 10).
+    pub fn indic_rearrangement(&self) -> bool {
+        (self.bits & 0b0000_0100_0000_0000) != 0
+    }
+
+    /// Returns the raw value of the Adobe-defined bits (bits 11-13).
+    pub fn adobe_defined(&self) -> u8 {
+        ((self.bits & 0b0011_1000_0000_0000) >> 11) as u8
+    }
+
+    /// Checks if the glyphs are generic symbols for code point ranges (bit 14).
+    pub fn generic_symbol_font(&self) -> bool {
+        (self.bits & 0b0100_0000_0000_0000) != 0
+    }
+
+    /// Returns the raw bits of the flags.
+    pub fn bits(&self) -> u16 {
+        self.bits
     }
 }
 
@@ -94,7 +106,7 @@ pub struct Head {
     /// sum the entire font as a uint32_t,
     /// then store 0xB1B0AFBA - sum.
     /// (The checksum for the 'head' table will be wrong as a result.
-    ///  That is OK; do not reset it.)
+    ///   That is OK; do not reset it.)
     checksum_adjustment: u32,
 
     /// Magic number, obselete, always set to 0x5F0F3CF5
@@ -161,15 +173,15 @@ impl Head {
     /// This method can return a `VeroTypeError` in the following cases:
     ///
     /// * **Seeking Error:** If an error occurs while seeking to the specified offset in the `reader`
-    ///   (wrapped as `VeroTypeError::IoError`).
+    ///    (wrapped as `VeroTypeError::IoError`).
     /// * **Reading Error:** If an error occurs while reading the 'head' table data from the `reader`
-    ///   (wrapped as `VeroTypeError::IoError`). This could happen if the end of the file is reached
-    ///   before the expected number of bytes are read.
+    ///    (wrapped as `VeroTypeError::IoError`). This could happen if the end of the file is reached
+    ///    before the expected number of bytes are read.
     /// * **Data Conversion Error:** If an error occurs during the conversion of the byte slices
-    ///   to the expected data types (e.g., `u32`, `u16`, `i64`, `i16`). Note that the `unwrap()`
-    ///   calls on `try_into()` will panic if the slice lengths are incorrect, which should be
-    ///   prevented by the `metadata.length` check. However, underlying `from_be_bytes` errors
-    ///   could potentially occur.
+    ///    to the expected data types (e.g., `u32`, `u16`, `i64`, `i16`). Note that the `unwrap()`
+    ///    calls on `try_into()` will panic if the slice lengths are incorrect, which should be
+    ///    prevented by the `metadata.length` check. However, underlying `from_be_bytes` errors
+    ///    could potentially occur.
     ///
     /// # Returns
     ///
@@ -203,7 +215,92 @@ impl Head {
             lowest_rec_ppem: u16::from_be_bytes(buf[46..48].try_into()?),
             font_direction_hint: i16::from_be_bytes(buf[48..50].try_into()?),
             index_to_loc_format: i16::from_be_bytes(buf[50..52].try_into()?),
-            glyph_data_format: i16::from_be_bytes(buf[50..52].try_into()?),
+            glyph_data_format: i16::from_be_bytes(buf[52..54].try_into()?),
         })
+    }
+
+    /// Returns the version of the head table.
+    pub fn version(&self) -> u32 {
+        self.version
+    }
+
+    /// Returns the font revision set by the font author/manufacturer.
+    pub fn font_revision(&self) -> u32 {
+        self.font_revision
+    }
+
+    /// Returns the check sum adjustment value.
+    pub fn checksum_adjustment(&self) -> u32 {
+        self.checksum_adjustment
+    }
+
+    /// Returns the magic number (always 0x5F0F3CF5).
+    pub fn magic_number(&self) -> u32 {
+        self.magic_number
+    }
+
+    /// Returns the flags which guide the font rendering and processing.
+    pub fn flags(&self) -> HeadFlags {
+        self.flags
+    }
+
+    /// Returns the units per em value.
+    pub fn units_per_em(&self) -> u16 {
+        self.units_per_em
+    }
+
+    /// Returns the date the font was created.
+    pub fn created(&self) -> i64 {
+        self.created
+    }
+
+    /// Returns the date the font was last modified.
+    pub fn modified(&self) -> i64 {
+        self.modified
+    }
+
+    /// Returns the minimum x value for all glyph bounding boxes.
+    pub fn x_min(&self) -> i16 {
+        self.x_min
+    }
+
+    /// Returns the minimum y value for all glyph bounding boxes.
+    pub fn y_min(&self) -> i16 {
+        self.y_min
+    }
+
+    /// Returns the maximum x value for all glyph bounding boxes.
+    pub fn x_max(&self) -> i16 {
+        self.x_max
+    }
+
+    /// Returns the maximum y value for all glyph bounding boxes.
+    pub fn y_max(&self) -> i16 {
+        self.y_max
+    }
+
+    /// Returns the mac style flags.
+    pub fn mac_style(&self) -> u16 {
+        self.mac_style
+    }
+
+    /// Returns the smallest readable size in pixel.
+    pub fn lowest_rec_ppem(&self) -> u16 {
+        self.lowest_rec_ppem
+    }
+
+    /// Returns the font direction hint.
+    pub fn font_direction_hint(&self) -> i16 {
+        self.font_direction_hint
+    }
+
+    /// Returns the index to loc format (0 for short offsets, 1 for long).
+    pub fn index_to_loc_format(&self) -> i16 {
+        self.index_to_loc_format
+    }
+
+    /// Returns the glyph data format (0 is for the current format).
+    pub fn glyph_data_format(&self) -> i16 {
+        self.glyph_data_format
     }
 }
