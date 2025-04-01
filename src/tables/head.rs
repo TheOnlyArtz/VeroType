@@ -1,6 +1,6 @@
 use std::io::{Read, Seek};
 
-use crate::{buffer::VeroBufReader, VeroTypeError};
+use crate::{VeroTypeError, buffer::VeroBufReader};
 
 use super::TableMetadata;
 
@@ -102,52 +102,90 @@ pub struct Head {
 
     /// The flags which guides the font rendering and processing
     flags: HeadFlags,
-    
+
     /// Units per em (ranges from 64 to 16384)
     units_per_em: u16,
-    
+
     /// Date the font was created
     created: i64,
-    
+
     /// Date the font was last modified
     modified: i64,
-    
+
     /// The minimum x value for all glyph bounding boxes
     x_min: i16,
-    
+
     /// The minimum y value for all glyph bounding boxes
     y_min: i16,
-    
+
     /// The maximum x value for all glyph bounding boxes
     x_max: i16,
-    
+
     /// The maximum y value for all glyph bounding boxes
     y_max: i16,
-    
+
     /// Macstyle (TODO)
     mac_style: u16,
-    
+
     /// Smallest readable size in pixel
     lowest_rec_ppem: u16,
-    
+
     /// font direction hint (TODO)
     font_direction_hint: i16,
-    
+
     /// Index to loc format, 0 for short offsets and 1 for long
     index_to_loc_format: i16,
-    
+
     /// Glyph data format (0 is for the current format)
-    glyph_data_format: i16
+    glyph_data_format: i16,
 }
 
 impl Head {
-    /// Accepts the table metadata so we know how many bytes to read and from where
-    pub(crate) fn from_reader<B: Read + Seek>(reader: &mut VeroBufReader<B>, metadata: &TableMetadata) -> Result<Self, VeroTypeError>{
+    /// Constructs a `Head` instance by reading data from the provided `VeroBufReader`.
+    ///
+    /// This method takes a mutable reference to a `VeroBufReader` and a `TableMetadata`
+    /// struct. The `TableMetadata` provides the offset and length of the 'head' table
+    /// within the font file.
+    ///
+    /// The method seeks to the beginning of the 'head' table data using the offset
+    /// from the metadata, reads the specified number of bytes into a buffer, and then
+    /// parses this buffer to populate the fields of the `Head` struct.
+    ///
+    /// # Arguments
+    ///
+    /// * `reader`: A mutable reference to a `VeroBufReader` that provides access to the font file data.
+    /// * `metadata`: A reference to a `TableMetadata` struct containing the offset and length of the 'head' table.
+    ///
+    /// # Errors
+    ///
+    /// This method can return a `VeroTypeError` in the following cases:
+    ///
+    /// * **Seeking Error:** If an error occurs while seeking to the specified offset in the `reader`
+    ///   (wrapped as `VeroTypeError::IoError`).
+    /// * **Reading Error:** If an error occurs while reading the 'head' table data from the `reader`
+    ///   (wrapped as `VeroTypeError::IoError`). This could happen if the end of the file is reached
+    ///   before the expected number of bytes are read.
+    /// * **Data Conversion Error:** If an error occurs during the conversion of the byte slices
+    ///   to the expected data types (e.g., `u32`, `u16`, `i64`, `i16`). Note that the `unwrap()`
+    ///   calls on `try_into()` will panic if the slice lengths are incorrect, which should be
+    ///   prevented by the `metadata.length` check. However, underlying `from_be_bytes` errors
+    ///   could potentially occur.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing:
+    ///
+    /// * `Ok(Self)`: A new `Head` instance populated with the data read from the `reader`.
+    /// * `Err(VeroTypeError)`: An error that occurred during the process.
+    pub(crate) fn from_reader<B: Read + Seek>(
+        reader: &mut VeroBufReader<B>,
+        metadata: &TableMetadata,
+    ) -> Result<Self, VeroTypeError> {
         reader.seek_to(metadata.offset.into())?;
         let mut buf = vec![0u8; metadata.length as usize];
-        
+
         reader.read_exact(&mut buf)?;
-        
+
         Ok(Self {
             version: u32::from_be_bytes(buf[0..4].try_into().unwrap()),
             font_revision: u32::from_be_bytes(buf[4..8].try_into().unwrap()),
@@ -165,7 +203,7 @@ impl Head {
             lowest_rec_ppem: u16::from_be_bytes(buf[46..48].try_into().unwrap()),
             font_direction_hint: i16::from_be_bytes(buf[48..50].try_into().unwrap()),
             index_to_loc_format: i16::from_be_bytes(buf[50..52].try_into().unwrap()),
-            glyph_data_format: i16::from_be_bytes(buf[50..52].try_into().unwrap()) 
+            glyph_data_format: i16::from_be_bytes(buf[50..52].try_into().unwrap()),
         })
     }
 }
